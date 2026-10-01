@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="id" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>حساب الجمل</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="حساب الجمل">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0e5c46">
+<style>
+:root{--bg:#f6f3ea;--card:#fff;--ink:#1d2b26;--mut:#6b7a73;--g:#0e5c46;--gold:#b8921f;--line:#e3ddcc;--red:#c0392b}
+@media(prefers-color-scheme:dark){:root{--bg:#10201b;--card:#17302a;--ink:#eee9d8;--mut:#9db3aa;--g:#2c8a6c;--gold:#d8b449;--line:#2a463e}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 -apple-system,"Geeza Pro","Segoe UI",sans-serif;padding-bottom:calc(70px + env(safe-area-inset-bottom))}
+header{background:var(--g);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:20px}
+header small{opacity:.8}
+main{padding:12px 16px;max-width:720px;margin:auto}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--mut);padding:8px 2px;font:inherit;font-size:12px;line-height:1.3}
+nav button b{display:block;font-size:18px}
+nav button.on{color:var(--g);font-weight:700}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+textarea,input,select{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+textarea{min-height:90px;font-size:22px;line-height:1.9}
+.btn{background:var(--g);color:#fff;border:0;border-radius:10px;padding:10px 16px;font:inherit}
+.btn.sec{background:none;color:var(--g);border:1px solid var(--g)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}
+.res{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line)}
+.res:last-child{border:0}
+.num{font-weight:700;font-variant-numeric:tabular-nums;color:var(--g);cursor:pointer}
+.n19{color:var(--red)}
+.ar{font-size:22px;line-height:2;font-family:"Geeza Pro","Traditional Arabic",serif}
+.mut{color:var(--mut);font-size:13px}
+.tag{display:inline-block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 8px;margin:2px;font-size:13px}
+.star{border:0;background:none;font-size:22px;color:var(--gold)}
+.item{border-bottom:1px solid var(--line);padding:8px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.grid label{font-size:13px;text-align:center}
+.grid input{text-align:center;padding:6px}
+h3{margin:6px 0}
+.sura{display:flex;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+</style>
+</head>
+<body>
+<header><h1>حساب الجمل</h1><small>Kalkulator Jummal · offline</small></header>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script src="data.js"></script>
+<script>
+/* ===== data & inti hitungan ===== */
+const LET="ابةتثجحخدذرزسشصضطظعغفقكلمنهوىيءؤئ".split("");
+const CLASSIC=[1,2,5,400,500,3,8,600,4,700,200,7,60,300,90,800,9,900,70,1000,80,100,20,30,40,50,5,6,10,10,1,1,1];
+const SURA=["الفاتحة","البقرة","آل عمران","النساء","المائدة","الأنعام","الأعراف","الأنفال","التوبة","يونس","هود","يوسف","الرعد","ابراهيم","الحجر","النحل","الإسراء","الكهف","مريم","طه","الأنبياء","الحج","المؤمنون","النور","الفرقان","الشعراء","النمل","القصص","العنكبوت","الروم","لقمان","السجدة","الأحزاب","سبإ","فاطر","يس","الصافات","ص","الزمر","غافر","فصلت","الشورى","الزخرف","الدخان","الجاثية","الأحقاف","محمد","الفتح","الحجرات","ق","الذاريات","الطور","النجم","القمر","الرحمن","الواقعة","الحديد","المجادلة","الحشر","الممتحنة","الصف","الجمعة","المنافقون","التغابن","الطلاق","التحريم","الملك","القلم","الحاقة","المعارج","نوح","الجن","المزمل","المدثر","القيامة","الانسان","المرسلات","النبإ","النازعات","عبس","التكوير","الإنفطار","المطففين","الإنشقاق","البروج","الطارق","الأعلى","الغاشية","الفجر","البلد","الشمس","الليل","الضحى","الشرح","التين","العلق","القدر","البينة","الزلزلة","العاديات","القارعة","التكاثر","العصر","الهمزة","الفيل","قريش","الماعون","الكوثر","الكافرون","النصر","المسد","الإخلاص","الفلق","الناس"];
+const PN=["١","٢","٣","٤","٥","٦","٧"];
+const $=(s,r=document)=>r.querySelector(s);
+const store={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+// sistem hitung: 0 klasik (tetap), 1..7 kustom (dapat diedit)
+let cfg=store.get("cfg",null)||{on:[1,0,0,0,0,0,0,0],names:["الجمل الكبير","نمط ١","نمط ٢","نمط ٣","نمط ٤","نمط ٥","نمط ٦","نمط ٧"],maps:["defghij".split("").map(k=>PRESETS[k])].flat()};
+const saveCfg=()=>store.set("cfg",cfg);
+const mapOf=i=>i==0?CLASSIC:cfg.maps[i-1];
+const lookup=i=>{const m=mapOf(i),o={};LET.forEach((l,j)=>o[l]=m[j]);return o};
+let LK=[];const refreshLK=()=>{LK=[0,1,2,3,4,5,6,7].map(lookup)};refreshLK();
+
+function norm(s){let o="";for(const ch of s){const c=ch.charCodeAt(0);if(c==32||(c>=1569&&c<=1610&&(c<=1594||c>=1601)))o+=(c==1570||c==1571||c==1573)?"ا":ch}return o}
+const val=(raw,i)=>{let t=0;const m=LK[i];for(const c of raw)if(c!=" ")t+=m[c]||0;return t};
+const letters=raw=>raw.replace(/ /g,"").length;
+const is19=n=>n&&n%19==0;
+const fmt=n=>`<span class="num${is19(n)?" n19":""}">${n}</span>`;
+
+// indeks ayat
+const AY=AYAT.map((a,i)=>({id:i,sura:a[0],nr:a[1],txt:a[2],raw:a[3],c0:a[4]}));
+const SUMS=Array.from({length:114},()=>({n:0,w:0,l:0,j:0}));
+AY.forEach(a=>{a.words=a.raw.split(" ");a.l=letters(a.raw);const s=SUMS[a.sura-1];s.n++;s.w+=a.words.length;s.l+=a.l;s.j+=a.c0});
+const ayVal=(a,i)=>i==0?a.c0:val(a.raw,i);
+const factors=n=>{const o=[];for(let i=2;i<n;i++)if(n%i==0)o.push([i,n/i]);return o};
+
+/* ===== favorit ===== */
+let fav=store.get("fav",[]);
+const toggleFav=id=>{fav=fav.includes(id)?fav.filter(x=>x!=id):[...fav,id];store.set("fav",fav);render()};
+const star=id=>`<button class="star" onclick="toggleFav(${id})">${fav.includes(id)?"★":"☆"}</button>`;
+
+/* ===== tampilan ===== */
+const TABS=[["hitung","🧮","Hitung"],["cari","🔍","Cari"],["banding","⚖️","Banding"],["surah","📖","Surah"],["fav","★","Favorit"],["atur","⚙️","Atur"]];
+let tab=store.get("tab","hitung"),st={txt:"",a:"",b:"",q:"",qsys:0,qscope:"ayat",sura:null,fd:null};
+$("#nav").innerHTML=TABS.map(t=>`<button data-t="${t[0]}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
+function go(t){tab=t;st.sura=null;store.set("tab",t);render();scrollTo(0,0)}
+const onSystems=()=>cfg.on.map((v,i)=>v?i:-1).filter(i=>i>=0);
+
+function render(){
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t==tab));
+  const el=$("#app");
+  el.innerHTML=({hitung:vHitung,cari:vCari,banding:vBanding,surah:vSurah,fav:vFav,atur:vAtur})[tab]();
+  if(tab=="hitung")liveHitung();
+  if(tab=="banding")liveBanding();
+}
+const ayHTML=(a,sys)=>`<div class="item"><div class="row"><span class="mut">${SURA[a.sura-1]} · ${a.nr}</span>${star(a.id)}</div><div class="ar">${a.txt}</div><div>${sys.map(i=>`<span class="tag">${cfg.names[i]}: ${fmt(ayVal(a,i))}</span>`).join("")}<span class="tag">كلمات ${a.words.length}</span><span class="tag">حروف ${a.l}</span></div></div>`;
+
+/* --- Hitung --- */
+function vHitung(){return `<div class="card"><textarea id="t" placeholder="اكتب أو الصق نصًا عربيًا — ketik/tempel teks Arab" oninput="st.txt=this.value;liveHitung()">${st.txt}</textarea></div><div id="out"></div>`}
+function liveHitung(){
+  const raw=norm(st.txt),o=$("#out");if(!o)return;
+  if(!raw.trim()){o.innerHTML='<p class="mut">Hasil hitungan muncul di sini. Ketuk sebuah angka untuk melihat faktor pembaginya.</p>';return}
+  const sys=onSystems(),words=raw.trim().split(/ +/).length;
+  let h='<div class="card">'+sys.map(i=>`<div class="res"><span>${cfg.names[i]}</span><span onclick="showF(${val(raw,i)})">${fmt(val(raw,i))}</span></div>`).join("")+`<div class="res"><span>عدد الحروف · jumlah huruf</span><span class="num">${letters(raw)}</span></div><div class="res"><span>عدد الكلمات · jumlah kata</span><span class="num">${words}</span></div></div>`;
+  if(st.fd)h+=fdHTML(st.fd);
+  o.innerHTML=h;
+}
+function showF(n){st.fd=n;liveHitung();liveBanding()}
+function fdHTML(n){const f=factors(n);return `<div class="card"><h3>العوامل · Faktor ${fmt(n)}</h3>${n%19==0?'<div class="mut">Kelipatan 19</div>':''}${f.length?f.filter(p=>p[0]<=p[1]).map(p=>`<span class="tag">${p[0]} × ${p[1]}</span>`).join(""):'<span class="mut">Bilangan prima</span>'}<div style="margin-top:8px"><button class="btn sec" onclick="st.q='${n}';tab='cari';render()">Cari ayat bernilai ${n}</button></div></div>`}
+
+/* --- Cari --- */
+function vCari(){
+  const sys=cfg.names.map((n,i)=>cfg.on[i]?`<option value="${i}" ${st.qsys==i?"selected":""}>${n}</option>`:"").join("");
+  let res="";
+  const n=parseInt(st.q);
+  if(n>0){
+    const out=[];
+    if(st.qscope=="ayat"){for(const a of AY)if(ayVal(a,st.qsys)==n)out.push(a)}
+    res=`<p class="mut">${st.qscope=="ayat"?out.length+" ayat":"kata"}</p>`;
+    if(st.qscope=="ayat")res+=out.slice(0,200).map(a=>ayHTML(a,[st.qsys])).join("");
+    else{let c=0,seen={};for(const a of AY)for(const w of a.words)if(val(w,st.qsys)==n){c++;(seen[w]=seen[w]||[]).push(a.sura+":"+a.nr)}
+      res=`<p class="mut">${c} kemunculan, ${Object.keys(seen).length} kata berbeda</p>`+Object.entries(seen).slice(0,200).map(([w,r])=>`<div class="item"><span class="ar">${w}</span> <span class="mut">${r.length}× · ${r.slice(0,5).join("، ")}</span></div>`).join("")}
+  }
+  return `<div class="card"><div class="row"><input id="q" inputmode="numeric" placeholder="Angka / العدد" value="${st.q}" onchange="st.q=this.value;render()"><select onchange="st.qsys=+this.value;render()">${sys}</select></div><div class="row" style="margin-top:8px"><select onchange="st.qscope=this.value;render()"><option value="ayat" ${st.qscope=="ayat"?"selected":""}>Ayat · آية</option><option value="kata" ${st.qscope=="kata"?"selected":""}>Kata · كلمة</option></select><button class="btn" onclick="st.q=$('#q').value;render()">Cari</button></div></div>${res}`;
+}
+
+/* --- Banding --- */
+function vBanding(){return `<div class="card"><textarea id="a" placeholder="النص الأول" oninput="st.a=this.value;liveBanding()">${st.a}</textarea></div><div class="card"><textarea id="b" placeholder="النص الثاني" oninput="st.b=this.value;liveBanding()">${st.b}</textarea></div><div id="cmp"></div>`}
+function liveBanding(){
+  const o=$("#cmp");if(!o)return;const A=norm(st.a),B=norm(st.b);if(!A.trim()||!B.trim()){o.innerHTML="";return}
+  o.innerHTML='<div class="card">'+onSystems().map(i=>{const x=val(A,i),y=val(B,i);return `<div class="res"><span>${cfg.names[i]}</span><span>${fmt(x)} · ${fmt(y)} · ${x==y?"✅ sama":"Δ "+Math.abs(x-y)}</span></div>`}).join("")+'</div>'+(st.fd?fdHTML(st.fd):"");
+}
+
+/* --- Surah --- */
+function vSurah(){
+  if(st.sura){const s=st.sura;return `<button class="btn sec" onclick="st.sura=null;render()">← Daftar surah</button><h3>${s}. ${SURA[s-1]}</h3>`+AY.filter(a=>a.sura==s).map(a=>ayHTML(a,onSystems())).join("")}
+  return `<div class="card">`+SURA.map((n,i)=>{const s=SUMS[i];return `<div class="sura" onclick="st.sura=${i+1};render();scrollTo(0,0)"><span><b>${i+1}</b> ${n}</span><span class="mut">${s.n} ayat · ${s.w} kata · ${s.l} huruf · ${fmt(s.j)}</span></div>`}).join("")+`</div>`;
+}
+
+/* --- Favorit --- */
+function vFav(){return fav.length?fav.map(id=>ayHTML(AY[id],onSystems())).join(""):'<p class="mut">Belum ada favorit. Ketuk ☆ pada ayat di tab Cari atau Surah.</p>'}
+
+/* --- Atur --- */
+function vAtur(){
+  return `<div class="card"><h3>Sistem hitung aktif</h3>`+cfg.names.map((n,i)=>`<div class="res"><label><input type="checkbox" style="width:auto" ${cfg.on[i]?"checked":""} onchange="cfg.on[${i}]=this.checked?1:0;saveCfg()"> ${i==0?n+" (tetap)":`<input style="width:140px;display:inline" value="${n}" onchange="cfg.names[${i}]=this.value;saveCfg()">`}</label>${i?`<button class="btn sec" onclick="editMap(${i})">Ubah nilai</button>`:""}</div>`).join("")+`</div><div id="ed"></div>
+  <div class="card"><h3>Tentang</h3><p class="mut">Versi PWA dari aplikasi Android "Jummal Calculator". Data 6.236 ayat sudah di dalam aplikasi, jalan tanpa internet. Nilai klasik ayat memakai angka bawaan data asli; hitungan teks ketikan memakai tabel huruf yang tampil di tab Atur. Angka kelipatan 19 berwarna merah.</p></div>`;
+}
+function editMap(i){
+  const m=mapOf(i);
+  $("#ed").innerHTML=`<div class="card"><h3>${cfg.names[i]}</h3><div class="grid">`+LET.map((l,j)=>`<label><span class="ar" style="font-size:20px">${l}</span><input inputmode="numeric" value="${m[j]}" onchange="cfg.maps[${i-1}][${j}]=+this.value||0"></label>`).join("")+`</div><div class="row" style="margin-top:10px"><button class="btn" onclick="saveCfg();refreshLK();render()">Simpan</button><select onchange="if(this.value!=''){cfg.maps[${i-1}]=PRESETS[this.value].slice();saveCfg();refreshLK();editMap(${i})}"><option value="">Isi dari bawaan…</option>${"defghij".split("").map((k,x)=>`<option value="${k}">Bawaan ${x+1}</option>`).join("")}</select></div></div>`;
+  $("#ed").scrollIntoView({behavior:"smooth"});
+}
+window.addEventListener("beforeunload",()=>{});
+render();
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
