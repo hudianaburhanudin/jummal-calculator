@@ -36,6 +36,7 @@ textarea{min-height:90px;font-size:22px;line-height:1.9}
 .num{font-weight:700;font-variant-numeric:tabular-nums;color:var(--g);cursor:pointer}
 .n19{color:var(--red)}
 .ar{font-size:22px;line-height:2;font-family:"Geeza Pro","Traditional Arabic",serif}
+.tr{font-size:15px;line-height:1.6;color:var(--ink);opacity:.85;margin:2px 0 6px;direction:ltr;text-align:left}
 .mut{color:var(--mut);font-size:13px}
 .tag{display:inline-block;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 8px;margin:2px;font-size:13px}
 .star{border:0;background:none;font-size:22px;color:var(--gold)}
@@ -52,6 +53,7 @@ h3{margin:6px 0}
 <main id="app"></main>
 <nav id="nav"></nav>
 <script src="data.js"></script>
+<script src="trans.js"></script>
 <script>
 /* ===== data & inti hitungan ===== */
 const LET="ابةتثجحخدذرزسشصضطظعغفقكلمنهوىيءؤئ".split("");
@@ -64,6 +66,7 @@ const store={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch
 // sistem hitung: 0 klasik (tetap), 1..7 kustom (dapat diedit)
 let cfg=store.get("cfg",null)||{on:[1,0,0,0,0,0,0,0],names:["الجمل الكبير","نمط ١","نمط ٢","نمط ٣","نمط ٤","نمط ٥","نمط ٦","نمط ٧"],maps:["defghij".split("").map(k=>PRESETS[k])].flat()};
 const saveCfg=()=>store.set("cfg",cfg);
+let showTr=store.get("showTr",true);
 const mapOf=i=>i==0?CLASSIC:cfg.maps[i-1];
 const lookup=i=>{const m=mapOf(i),o={};LET.forEach((l,j)=>o[l]=m[j]);return o};
 let LK=[];const refreshLK=()=>{LK=[0,1,2,3,4,5,6,7].map(lookup)};refreshLK();
@@ -100,7 +103,7 @@ function render(){
   if(tab=="hitung")liveHitung();
   if(tab=="banding")liveBanding();
 }
-const ayHTML=(a,sys)=>`<div class="item"><div class="row"><span class="mut">${SURA[a.sura-1]} · ${a.nr}</span>${star(a.id)}</div><div class="ar">${a.txt}</div><div>${sys.map(i=>`<span class="tag">${cfg.names[i]}: ${fmt(ayVal(a,i))}</span>`).join("")}<span class="tag">كلمات ${a.words.length}</span><span class="tag">حروف ${a.l}</span></div></div>`;
+const ayHTML=(a,sys)=>`<div class="item"><div class="row"><span class="mut">${SURA[a.sura-1]} · ${a.nr}</span>${star(a.id)}</div><div class="ar">${a.txt}</div>${showTr?`<div class="tr">${TRANS[a.id]}</div>`:""}<div>${sys.map(i=>`<span class="tag">${cfg.names[i]}: ${fmt(ayVal(a,i))}</span>`).join("")}<span class="tag">كلمات ${a.words.length}</span><span class="tag">حروف ${a.l}</span></div></div>`;
 
 /* --- Hitung --- */
 function vHitung(){return `<div class="card"><textarea id="t" placeholder="اكتب أو الصق نصًا عربيًا — ketik/tempel teks Arab" oninput="st.txt=this.value;liveHitung()">${st.txt}</textarea></div><div id="out"></div>`}
@@ -120,7 +123,11 @@ function vCari(){
   const sys=cfg.names.map((n,i)=>cfg.on[i]?`<option value="${i}" ${st.qsys==i?"selected":""}>${n}</option>`:"").join("");
   let res="";
   const n=parseInt(st.q);
-  if(n>0){
+  if(st.qscope=="terjemah"){
+    const q=st.q.trim().toLowerCase();
+    if(q.length>=3){const out=AY.filter(a=>TRANS[a.id].toLowerCase().includes(q));res=`<p class="mut">${out.length} ayat</p>`+out.slice(0,200).map(a=>ayHTML(a,[st.qsys])).join("")}
+    else res='<p class="mut">Ketik minimal 3 huruf kata dalam bahasa Indonesia.</p>';
+  }else if(n>0){
     const out=[];
     if(st.qscope=="ayat"){for(const a of AY)if(ayVal(a,st.qsys)==n)out.push(a)}
     res=`<p class="mut">${st.qscope=="ayat"?out.length+" ayat":"kata"}</p>`;
@@ -128,7 +135,7 @@ function vCari(){
     else{let c=0,seen={};for(const a of AY)for(const w of a.words)if(val(w,st.qsys)==n){c++;(seen[w]=seen[w]||[]).push(a.sura+":"+a.nr)}
       res=`<p class="mut">${c} kemunculan, ${Object.keys(seen).length} kata berbeda</p>`+Object.entries(seen).slice(0,200).map(([w,r])=>`<div class="item"><span class="ar">${w}</span> <span class="mut">${r.length}× · ${r.slice(0,5).join("، ")}</span></div>`).join("")}
   }
-  return `<div class="card"><div class="row"><input id="q" inputmode="numeric" placeholder="Angka / العدد" value="${st.q}" onchange="st.q=this.value;render()"><select onchange="st.qsys=+this.value;render()">${sys}</select></div><div class="row" style="margin-top:8px"><select onchange="st.qscope=this.value;render()"><option value="ayat" ${st.qscope=="ayat"?"selected":""}>Ayat · آية</option><option value="kata" ${st.qscope=="kata"?"selected":""}>Kata · كلمة</option></select><button class="btn" onclick="st.q=$('#q').value;render()">Cari</button></div></div>${res}`;
+  return `<div class="card"><div class="row"><input id="q" placeholder="Angka / kata (untuk terjemahan)" value="${st.q}" onchange="st.q=this.value;render()"><select onchange="st.qsys=+this.value;render()">${sys}</select></div><div class="row" style="margin-top:8px"><select onchange="st.qscope=this.value;render()"><option value="ayat" ${st.qscope=="ayat"?"selected":""}>Ayat · آية</option><option value="kata" ${st.qscope=="kata"?"selected":""}>Kata · كلمة</option><option value="terjemah" ${st.qscope=="terjemah"?"selected":""}>Terjemahan (teks)</option></select><button class="btn" onclick="st.q=$('#q').value;render()">Cari</button></div></div>${res}`;
 }
 
 /* --- Banding --- */
@@ -149,8 +156,8 @@ function vFav(){return fav.length?fav.map(id=>ayHTML(AY[id],onSystems())).join("
 
 /* --- Atur --- */
 function vAtur(){
-  return `<div class="card"><h3>Sistem hitung aktif</h3>`+cfg.names.map((n,i)=>`<div class="res"><label><input type="checkbox" style="width:auto" ${cfg.on[i]?"checked":""} onchange="cfg.on[${i}]=this.checked?1:0;saveCfg()"> ${i==0?n+" (tetap)":`<input style="width:140px;display:inline" value="${n}" onchange="cfg.names[${i}]=this.value;saveCfg()">`}</label>${i?`<button class="btn sec" onclick="editMap(${i})">Ubah nilai</button>`:""}</div>`).join("")+`</div><div id="ed"></div>
-  <div class="card"><h3>Tentang</h3><p class="mut">Versi PWA dari aplikasi Android "Jummal Calculator". Data 6.236 ayat sudah di dalam aplikasi, jalan tanpa internet. Nilai klasik ayat memakai angka bawaan data asli; hitungan teks ketikan memakai tabel huruf yang tampil di tab Atur. Angka kelipatan 19 berwarna merah.</p></div>`;
+  return `<div class="card"><div class="res"><label><input type="checkbox" style="width:auto" ${showTr?"checked":""} onchange="showTr=this.checked;store.set('showTr',showTr)"> Tampilkan terjemahan Indonesia di bawah ayat</label></div></div><div class="card"><h3>Sistem hitung aktif</h3>`+cfg.names.map((n,i)=>`<div class="res"><label><input type="checkbox" style="width:auto" ${cfg.on[i]?"checked":""} onchange="cfg.on[${i}]=this.checked?1:0;saveCfg()"> ${i==0?n+" (tetap)":`<input style="width:140px;display:inline" value="${n}" onchange="cfg.names[${i}]=this.value;saveCfg()">`}</label>${i?`<button class="btn sec" onclick="editMap(${i})">Ubah nilai</button>`:""}</div>`).join("")+`</div><div id="ed"></div>
+  <div class="card"><h3>Tentang</h3><p class="mut">Versi PWA dari aplikasi Android "Jummal Calculator". Data 6.236 ayat sudah di dalam aplikasi, jalan tanpa internet. Nilai klasik ayat memakai angka bawaan data asli; hitungan teks ketikan memakai tabel huruf yang tampil di tab Atur. Angka kelipatan 19 berwarna merah. Terjemahan: Al-Qur'an dan Terjemahnya (Kementerian Agama RI), via Tanzil.net.</p></div>`;
 }
 function editMap(i){
   const m=mapOf(i);
