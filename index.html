@@ -45,6 +45,15 @@ textarea{min-height:90px;font-size:22px;line-height:1.9}
 .grid label{font-size:13px;text-align:center}
 .grid input{text-align:center;padding:6px}
 h3{margin:6px 0}
+.msgs{display:flex;flex-direction:column;gap:10px;margin:10px 0}
+.bub{max-width:92%;border-radius:14px;padding:8px 12px;border:1px solid var(--line);background:var(--card)}
+.bub.me{align-self:flex-start;background:var(--bg);direction:ltr;text-align:left}
+.bub.bot{align-self:flex-end;background:var(--card);border-color:var(--g)}
+.bub .ar{margin:0}
+.bub .acts{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
+.bub .acts button{border:1px solid var(--line);background:none;color:var(--mut);border-radius:8px;padding:2px 10px;font:inherit;font-size:12px}
+.cbar{position:sticky;bottom:calc(60px + env(safe-area-inset-bottom));background:var(--bg);padding:6px 0}
+.cbar textarea{min-height:56px;font-size:16px;line-height:1.5;direction:ltr}
 .sura{display:flex;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer}
 </style>
 </head>
@@ -90,8 +99,8 @@ const toggleFav=id=>{fav=fav.includes(id)?fav.filter(x=>x!=id):[...fav,id];store
 const star=id=>`<button class="star" onclick="toggleFav(${id})">${fav.includes(id)?"★":"☆"}</button>`;
 
 /* ===== tampilan ===== */
-const TABS=[["hitung","🧮","Hitung"],["cari","🔍","Cari"],["banding","⚖️","Banding"],["surah","📖","Surah"],["fav","★","Favorit"],["atur","⚙️","Atur"]];
-let tab=store.get("tab","hitung"),st={txt:"",a:"",b:"",q:"",qsys:0,qscope:"ayat",sura:null,fd:null};
+const TABS=[["hitung","🧮","Hitung"],["cari","🔍","Cari"],["banding","⚖️","Banding"],["chat","💬","Chat"],["surah","📖","Surah"],["fav","★","Favorit"],["atur","⚙️","Atur"]];
+let tab=store.get("tab","hitung"),st={cdir:store.get("cdir","id-ar"),ci:"",txt:"",a:"",b:"",q:"",qsys:0,qscope:"ayat",sura:null,fd:null};
 $("#nav").innerHTML=TABS.map(t=>`<button data-t="${t[0]}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
 function go(t){tab=t;st.sura=null;store.set("tab",t);render();scrollTo(0,0)}
 const onSystems=()=>cfg.on.map((v,i)=>v?i:-1).filter(i=>i>=0);
@@ -99,7 +108,7 @@ const onSystems=()=>cfg.on.map((v,i)=>v?i:-1).filter(i=>i>=0);
 function render(){
   document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on",b.dataset.t==tab));
   const el=$("#app");
-  el.innerHTML=({hitung:vHitung,cari:vCari,banding:vBanding,surah:vSurah,fav:vFav,atur:vAtur})[tab]();
+  el.innerHTML=({hitung:vHitung,cari:vCari,banding:vBanding,chat:vChat,surah:vSurah,fav:vFav,atur:vAtur})[tab]();
   if(tab=="hitung")liveHitung();
   if(tab=="banding")liveBanding();
 }
@@ -144,6 +153,54 @@ function liveBanding(){
   const o=$("#cmp");if(!o)return;const A=norm(st.a),B=norm(st.b);if(!A.trim()||!B.trim()){o.innerHTML="";return}
   o.innerHTML='<div class="card">'+onSystems().map(i=>{const x=val(A,i),y=val(B,i);return `<div class="res"><span>${cfg.names[i]}</span><span>${fmt(x)} · ${fmt(y)} · ${x==y?"✅ sama":"Δ "+Math.abs(x-y)}</span></div>`}).join("")+'</div>'+(st.fd?fdHTML(st.fd):"");
 }
+
+/* --- Chat terjemah (Indonesia ⇄ Arab) --- */
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let chat=store.get("chat",[]).filter(m=>m.out!==null);
+const saveChat=()=>store.set("chat",chat.slice(-200));
+let TIDX=null;
+const tkey=s=>s.toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+// ayat yang persis sama dengan terjemahan bawaan → Arab (berharakat) tanpa internet
+function localTr(text){
+  if(!TIDX){TIDX={};TRANS.forEach((t,i)=>{TIDX[tkey(t)]=i})}
+  const i=TIDX[tkey(text)];return i===undefined?null:AY[i].txt;
+}
+function chunks(t){
+  const parts=t.split(/(?<=[.!?؟\n])\s+/),o=[];let c="";
+  for(const p of parts){if((c+" "+p).length>450&&c){o.push(c);c=p}else c=c?c+" "+p:p}
+  if(c)o.push(c);return o.flatMap(x=>x.length>450?x.match(/.{1,450}/g):[x]);
+}
+async function translate(text,dir){
+  if(dir=="id-ar"){const l=localTr(text);if(l)return l}
+  const lp=dir=="id-ar"?"id|ar":"ar|id",out=[];
+  for(const c of chunks(text)){
+    const r=await fetch("https://api.mymemory.translated.net/get?q="+encodeURIComponent(c)+"&langpair="+encodeURIComponent(lp));
+    const j=await r.json();
+    if(String(j.responseStatus)!="200")throw new Error(j.responseDetails||"gagal");
+    out.push(j.responseData.translatedText);
+  }
+  return out.join(" ");
+}
+function vChat(){
+  const ar=st.cdir=="id-ar";
+  const list=chat.length?chat.map(m=>{
+    return `<div class="msgs"><div class="bub me">${m.dir=="id-ar"?esc(m.src):`<div class="ar" style="direction:rtl;text-align:right">${esc(m.src)}</div>`}</div>${m.pending?'<div class="bub bot mut">⏳ …</div>':m.err?`<div class="bub bot mut">⚠️ ${esc(m.err)}</div>`:`<div class="bub bot">${m.dir=="id-ar"?`<div class="ar">${esc(m.out)}</div>`:`<div class="tr" style="opacity:1">${esc(m.out)}</div>`}<div class="acts"><button onclick="copyMsg(${m.id})">Salin</button><button onclick="hitungMsg(${m.id})">Hitung jummal</button><button onclick="delMsg(${m.id})">Hapus</button></div></div>`}</div>`;
+  }).join(""):'<p class="mut">Tulis pesan dalam bahasa Indonesia, langsung diterjemahkan ke bahasa Arab. Perlu internet untuk terjemahan baru; ayat dari terjemahan bawaan tetap jalan offline. Hasil terjemahan mesin, periksa lagi untuk teks penting.</p>';
+  return `<div class="card row"><button class="btn sec" onclick="st.cdir='${ar?"ar-id":"id-ar"}';store.set('cdir',st.cdir);render()">${ar?"Indonesia → العربية":"العربية → Indonesia"} ⇄</button>${chat.length?'<button class="btn sec" onclick="if(confirm(\'Hapus semua chat?\')){chat=[];saveChat();render()}">Hapus semua</button>':""}</div>${list}<div class="cbar card"><div class="row"><textarea id="ci" dir="${ar?"ltr":"rtl"}" placeholder="${ar?"Tulis dalam bahasa Indonesia…":"اكتب بالعربية…"}" oninput="st.ci=this.value" onkeydown="if(event.key=='Enter'&&!event.shiftKey&&!/Mobi|Android/i.test(navigator.userAgent)){event.preventDefault();sendChat()}">${esc(st.ci)}</textarea><button class="btn" style="flex:0 0 auto" onclick="sendChat()">Kirim</button></div></div>`;
+}
+async function sendChat(){
+  const text=(st.ci||"").trim();if(!text)return;
+  const m={id:Date.now(),dir:st.cdir,src:text,out:"",pending:true};
+  chat.push(m);st.ci="";render();scrollTo(0,document.body.scrollHeight);
+  try{m.out=await translate(text,m.dir);m.pending=false}
+  catch(e){m.pending=false;m.err=navigator.onLine?"Terjemahan gagal, coba lagi.":"Tidak ada internet."}
+  m.out=m.out||"";if(m.err){chat=chat.filter(x=>x!==m);st.ci=text;saveChat();if(tab=="chat"){render();alert(m.err)}return}
+  saveChat();if(tab=="chat"){render();scrollTo(0,document.body.scrollHeight)}
+}
+const msgAr=id=>{const m=chat.find(x=>x.id==id);return m?(m.dir=="id-ar"?m.out:m.src):""};
+function copyMsg(id){const m=chat.find(x=>x.id==id);const t=m.out;try{navigator.clipboard.writeText(t)}catch(e){prompt("Salin:",t)}}
+function hitungMsg(id){st.txt=msgAr(id);st.fd=null;go("hitung")}
+function delMsg(id){chat=chat.filter(x=>x.id!=id);saveChat();render()}
 
 /* --- Surah --- */
 function vSurah(){
