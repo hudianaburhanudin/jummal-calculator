@@ -100,7 +100,7 @@ const star=id=>`<button class="star" onclick="toggleFav(${id})">${fav.includes(i
 
 /* ===== tampilan ===== */
 const TABS=[["hitung","🧮","Hitung"],["cari","🔍","Cari"],["banding","⚖️","Banding"],["chat","💬","Chat"],["surah","📖","Surah"],["fav","★","Favorit"],["atur","⚙️","Atur"]];
-let tab=store.get("tab","hitung"),st={cdir:store.get("cdir","id-ar"),ci:"",txt:"",a:"",b:"",q:"",qsys:0,qscope:"ayat",sura:null,fd:null};
+let tab=store.get("tab","hitung"),st={cmode:store.get("cmode","tr"),cdir:store.get("cdir","id-ar"),ci:"",txt:"",a:"",b:"",q:"",qsys:0,qscope:"ayat",sura:null,fd:null};
 $("#nav").innerHTML=TABS.map(t=>`<button data-t="${t[0]}" onclick="go('${t[0]}')"><b>${t[1]}</b>${t[2]}</button>`).join("");
 function go(t){tab=t;st.sura=null;store.set("tab",t);render();scrollTo(0,0)}
 const onSystems=()=>cfg.on.map((v,i)=>v?i:-1).filter(i=>i>=0);
@@ -207,7 +207,11 @@ function prepId(text){
     return t;
   });
 }
+const PUNC={",":"،","?":"؟",";":"؛"};
+// mode 2: seluruh teks ditulis Pegon (tanpa internet); istilah ber-padanan Arab tetap Arab asli, huruf Arab dibiarkan
+const pegonText=t=>t.replace(LAT,arabize).replace(/[,?;]/g,c=>PUNC[c]);
 async function translate(text,dir){
+  if(dir=="pegon")return pegonText(text);
   if(dir=="id-ar"){
     const l=localTr(text);if(l)return l;
     text=prepId(text);
@@ -224,22 +228,23 @@ async function translate(text,dir){
   return dir=="id-ar"?res.replace(LAT,arabize):res; // sisa huruf Latin → Arab asli / Pegon
 }
 function vChat(){
-  const ar=st.cdir=="id-ar";
+  const pg=st.cmode=="pg",ar=pg||st.cdir=="id-ar";
   const list=chat.length?chat.map(m=>{
-    return `<div class="msgs"><div class="bub me">${m.dir=="id-ar"?esc(m.src):`<div class="ar" style="direction:rtl;text-align:right">${esc(m.src)}</div>`}</div>${m.pending?'<div class="bub bot mut">⏳ …</div>':m.err?`<div class="bub bot mut">⚠️ ${esc(m.err)}</div>`:`<div class="bub bot">${m.dir=="id-ar"?`<div class="ar">${esc(m.out)}</div>`:`<div class="tr" style="opacity:1">${esc(m.out)}</div>`}<div class="acts"><button onclick="copyMsg(${m.id})">Salin</button><button onclick="hitungMsg(${m.id})">Hitung jummal</button><button onclick="delMsg(${m.id})">Hapus</button></div></div>`}</div>`;
-  }).join(""):'<p class="mut">Tulis pesan dalam bahasa Indonesia, langsung diterjemahkan ke bahasa Arab. Istilah yang punya padanan Arab (Allah, shalat, zakat…) ditulis Arab aslinya; nama dan kata tanpa padanan ditulis Pegon (a=ا, u=و, i=ي). Teks Arab yang Anda sisipkan dibiarkan apa adanya. Perlu internet untuk terjemahan baru; ayat dari terjemahan bawaan tetap jalan offline. Hasil terjemahan mesin, periksa lagi untuk teks penting.</p>';
-  return `<div class="card row"><button class="btn sec" onclick="st.cdir='${ar?"ar-id":"id-ar"}';store.set('cdir',st.cdir);render()">${ar?"Indonesia → العربية":"العربية → Indonesia"} ⇄</button>${chat.length?'<button class="btn sec" onclick="if(confirm(\'Hapus semua chat?\')){chat=[];saveChat();render()}">Hapus semua</button>':""}</div>${list}<div class="cbar card"><div class="row"><textarea id="ci" dir="${ar?"ltr":"rtl"}" placeholder="${ar?"Tulis dalam bahasa Indonesia…":"اكتب بالعربية…"}" oninput="st.ci=this.value" onkeydown="if(event.key=='Enter'&&!event.shiftKey&&!/Mobi|Android/i.test(navigator.userAgent)){event.preventDefault();sendChat()}">${esc(st.ci)}</textarea><button class="btn" style="flex:0 0 auto" onclick="sendChat()">Kirim</button></div></div>`;
+    return `<div class="msgs"><div class="bub me">${m.dir!="ar-id"?esc(m.src):`<div class="ar" style="direction:rtl;text-align:right">${esc(m.src)}</div>`}</div>${m.pending?'<div class="bub bot mut">⏳ …</div>':m.err?`<div class="bub bot mut">⚠️ ${esc(m.err)}</div>`:`<div class="bub bot">${m.dir!="ar-id"?`<div class="ar">${esc(m.out)}</div>`:`<div class="tr" style="opacity:1">${esc(m.out)}</div>`}<div class="acts"><button onclick="copyMsg(${m.id})">Salin</button><button onclick="hitungMsg(${m.id})">Hitung jummal</button><button onclick="delMsg(${m.id})">Hapus</button></div></div>`}</div>`;
+  }).join(""):'<p class="mut"><b>1. Terjemahkan</b>: tulis dalam bahasa Indonesia, langsung diterjemahkan ke bahasa Arab. <b>2. Tulis Pegon</b>: teks Indonesia Anda ditulis apa adanya dengan huruf Arab. Istilah yang punya padanan Arab (Allah, shalat, zakat…) ditulis Arab aslinya; nama dan kata tanpa padanan ditulis Pegon (a=ا, u=و, i=ي). Teks Arab yang Anda sisipkan dibiarkan apa adanya. Perlu internet untuk terjemahan baru; ayat dari terjemahan bawaan tetap jalan offline. Hasil terjemahan mesin, periksa lagi untuk teks penting.</p>';
+  const mb=(k,l)=>`<button class="btn${st.cmode==k?"":" sec"}" onclick="st.cmode='${k}';store.set('cmode','${k}');render()">${l}</button>`;
+  return `<div class="card"><div class="row">${mb("tr","1. Terjemahkan")}${mb("pg","2. Tulis Pegon")}</div><div class="row" style="margin-top:8px">${pg?'<span class="mut">Teks Indonesia ditulis dengan huruf Arab (Pegon), tanpa internet.</span>':`<button class="btn sec" onclick="st.cdir='${ar?"ar-id":"id-ar"}';store.set('cdir',st.cdir);render()">${ar?"Indonesia → العربية":"العربية → Indonesia"} ⇄</button>`}${chat.length?'<button class="btn sec" onclick="if(confirm(\'Hapus semua chat?\')){chat=[];saveChat();render()}">Hapus semua</button>':""}</div></div>${list}<div class="cbar card"><div class="row"><textarea id="ci" dir="${ar?"ltr":"rtl"}" placeholder="${ar?"Tulis dalam bahasa Indonesia…":"اكتب بالعربية…"}" oninput="st.ci=this.value" onkeydown="if(event.key=='Enter'&&!event.shiftKey&&!/Mobi|Android/i.test(navigator.userAgent)){event.preventDefault();sendChat()}">${esc(st.ci)}</textarea><button class="btn" style="flex:0 0 auto" onclick="sendChat()">Kirim</button></div></div>`;
 }
 async function sendChat(){
   const text=(st.ci||"").trim();if(!text)return;
-  const m={id:Date.now(),dir:st.cdir,src:text,out:"",pending:true};
+  const m={id:Date.now(),dir:st.cmode=='pg'?'pegon':st.cdir,src:text,out:"",pending:true};
   chat.push(m);st.ci="";render();scrollTo(0,document.body.scrollHeight);
   try{m.out=await translate(text,m.dir);m.pending=false}
   catch(e){m.pending=false;m.err=navigator.onLine?"Terjemahan gagal, coba lagi.":"Tidak ada internet."}
   m.out=m.out||"";if(m.err){chat=chat.filter(x=>x!==m);st.ci=text;saveChat();if(tab=="chat"){render();alert(m.err)}return}
   saveChat();if(tab=="chat"){render();scrollTo(0,document.body.scrollHeight)}
 }
-const msgAr=id=>{const m=chat.find(x=>x.id==id);return m?(m.dir=="id-ar"?m.out:m.src):""};
+const msgAr=id=>{const m=chat.find(x=>x.id==id);return m?(m.dir!="ar-id"?m.out:m.src):""};
 function copyMsg(id){const m=chat.find(x=>x.id==id);const t=m.out;try{navigator.clipboard.writeText(t)}catch(e){prompt("Salin:",t)}}
 function hitungMsg(id){st.txt=msgAr(id);st.fd=null;go("hitung")}
 function delMsg(id){chat=chat.filter(x=>x.id!=id);saveChat();render()}
