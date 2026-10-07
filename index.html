@@ -170,8 +170,49 @@ function chunks(t){
   for(const p of parts){if((c+" "+p).length>450&&c){o.push(c);c=p}else c=c?c+" "+p:p}
   if(c)o.push(c);return o.flatMap(x=>x.length>450?x.match(/.{1,450}/g):[x]);
 }
+/* Aturan penulisan: ada padanan Arab → tulis Arab aslinya; tidak ada → Pegon (a=ا, u=و, i=ي) */
+const KAMUS={allah:"الله",alloh:"الله",muhammad:"محمد",nabi:"نبي",rasul:"رسول",rasulullah:"رسول الله",saw:"ﷺ",shalat:"صلاة",salat:"صلاة",sholat:"صلاة",puasa:"صيام",zakat:"زكاة",haji:"حج",doa:"دعاء",ilmu:"علم",iman:"إيمان",islam:"إسلام",quran:"القرآن",alquran:"القرآن",alqur:"القرآن",hadits:"حديث",hadis:"حديث",ayat:"آية",surat:"سورة",surah:"سورة",ulama:"علماء",fiqih:"فقه",fikih:"فقه",tauhid:"توحيد",akhlak:"أخلاق",sunnah:"سنة",wudhu:"وضوء",wudu:"وضوء",masjid:"مسجد",syukur:"شكر",sabar:"صبر",ikhlas:"إخلاص",taubat:"توبة",surga:"جنة",neraka:"نار",malaikat:"ملائكة",jin:"جن",akhirat:"آخرة",dunia:"دنيا",berkah:"بركة",barakah:"بركة",rahmat:"رحمة",amin:"آمين",aamiin:"آمين",insyaallah:"إن شاء الله",alhamdulillah:"الحمد لله",subhanallah:"سبحان الله",masyaallah:"ما شاء الله",bismillah:"بسم الله",astaghfirullah:"أستغفر الله",assalamualaikum:"السلام عليكم",waalaikumsalam:"وعليكم السلام"};
+const LAT=/[A-Za-z][A-Za-z'’\-]*/g;
+const kkey=w=>w.toLowerCase().replace(/['’\-]/g,"");
+const DG={ng:"ڠ",ny:"ڽ",kh:"خ",sy:"ش",gh:"غ"};
+const CS={b:"ب",c:"چ",d:"د",f:"ف",g:"ݢ",h:"ه",j:"ج",k:"ك",l:"ل",m:"م",n:"ن",p:"ڤ",q:"ق",r:"ر",s:"س",t:"ت",v:"ۏ",w:"و",x:"كس",y:"ي",z:"ز"};
+const VI={a:"ا",i:"اي",u:"او",e:"اي",o:"او"},VM={a:"ا",i:"ي",u:"و",e:"ي",o:"و"};
+function pegon(w){
+  w=kkey(w);let o="",i=0;
+  while(i<w.length){
+    const d=w.substr(i,2);
+    if(DG[d]){o+=DG[d];i+=2;continue}
+    const c=w[i];
+    if(CS[c])o+=CS[c];
+    else if(VM[c])o+=i==0?VI[c]:VM[c];
+    else o+=c;
+    i++;
+  }
+  return o;
+}
+const arabize=w=>KAMUS[kkey(w)]||pegon(w);
+// Kata dalam teks Indonesia: istilah ada padanan Arab → Arab asli; nama diri (huruf besar di tengah kalimat) → Pegon.
+// Hasilnya ditulis langsung dalam huruf Arab supaya tidak diubah oleh mesin terjemah.
+function prepId(text){
+  let start=true;
+  return text.replace(/[A-Za-z][A-Za-z'’\-]*|[.!?\n]+|[^A-Za-z.!?\n]+/g,t=>{
+    if(/^[A-Za-z]/.test(t)){
+      const first=start;start=false;
+      if(KAMUS[kkey(t)])return KAMUS[kkey(t)];
+      if(!first&&/^[A-Z]/.test(t))return pegon(t);
+      return t;
+    }
+    if(/[.!?\n]/.test(t))start=true;
+    else if(/\S/.test(t))start=false;
+    return t;
+  });
+}
 async function translate(text,dir){
-  if(dir=="id-ar"){const l=localTr(text);if(l)return l}
+  if(dir=="id-ar"){
+    const l=localTr(text);if(l)return l;
+    text=prepId(text);
+    if(!/[A-Za-z]/.test(text))return text; // sudah Arab/Pegon semua → tanpa internet
+  }
   const lp=dir=="id-ar"?"id|ar":"ar|id",out=[];
   for(const c of chunks(text)){
     const r=await fetch("https://api.mymemory.translated.net/get?q="+encodeURIComponent(c)+"&langpair="+encodeURIComponent(lp));
@@ -179,13 +220,14 @@ async function translate(text,dir){
     if(String(j.responseStatus)!="200")throw new Error(j.responseDetails||"gagal");
     out.push(j.responseData.translatedText);
   }
-  return out.join(" ");
+  const res=out.join(" ");
+  return dir=="id-ar"?res.replace(LAT,arabize):res; // sisa huruf Latin → Arab asli / Pegon
 }
 function vChat(){
   const ar=st.cdir=="id-ar";
   const list=chat.length?chat.map(m=>{
     return `<div class="msgs"><div class="bub me">${m.dir=="id-ar"?esc(m.src):`<div class="ar" style="direction:rtl;text-align:right">${esc(m.src)}</div>`}</div>${m.pending?'<div class="bub bot mut">⏳ …</div>':m.err?`<div class="bub bot mut">⚠️ ${esc(m.err)}</div>`:`<div class="bub bot">${m.dir=="id-ar"?`<div class="ar">${esc(m.out)}</div>`:`<div class="tr" style="opacity:1">${esc(m.out)}</div>`}<div class="acts"><button onclick="copyMsg(${m.id})">Salin</button><button onclick="hitungMsg(${m.id})">Hitung jummal</button><button onclick="delMsg(${m.id})">Hapus</button></div></div>`}</div>`;
-  }).join(""):'<p class="mut">Tulis pesan dalam bahasa Indonesia, langsung diterjemahkan ke bahasa Arab. Perlu internet untuk terjemahan baru; ayat dari terjemahan bawaan tetap jalan offline. Hasil terjemahan mesin, periksa lagi untuk teks penting.</p>';
+  }).join(""):'<p class="mut">Tulis pesan dalam bahasa Indonesia, langsung diterjemahkan ke bahasa Arab. Istilah yang punya padanan Arab (Allah, shalat, zakat…) ditulis Arab aslinya; nama dan kata tanpa padanan ditulis Pegon (a=ا, u=و, i=ي). Teks Arab yang Anda sisipkan dibiarkan apa adanya. Perlu internet untuk terjemahan baru; ayat dari terjemahan bawaan tetap jalan offline. Hasil terjemahan mesin, periksa lagi untuk teks penting.</p>';
   return `<div class="card row"><button class="btn sec" onclick="st.cdir='${ar?"ar-id":"id-ar"}';store.set('cdir',st.cdir);render()">${ar?"Indonesia → العربية":"العربية → Indonesia"} ⇄</button>${chat.length?'<button class="btn sec" onclick="if(confirm(\'Hapus semua chat?\')){chat=[];saveChat();render()}">Hapus semua</button>':""}</div>${list}<div class="cbar card"><div class="row"><textarea id="ci" dir="${ar?"ltr":"rtl"}" placeholder="${ar?"Tulis dalam bahasa Indonesia…":"اكتب بالعربية…"}" oninput="st.ci=this.value" onkeydown="if(event.key=='Enter'&&!event.shiftKey&&!/Mobi|Android/i.test(navigator.userAgent)){event.preventDefault();sendChat()}">${esc(st.ci)}</textarea><button class="btn" style="flex:0 0 auto" onclick="sendChat()">Kirim</button></div></div>`;
 }
 async function sendChat(){
